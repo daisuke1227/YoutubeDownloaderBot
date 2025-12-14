@@ -14,7 +14,16 @@ class YouTubeDownloader:
     def _sanitize_filename(self, title: str) -> str:
         return re.sub(r'[<>:"/\\|?*]', '', title)[:100]
 
+    def _clean_url(self, url: str) -> str:
+        url = re.sub(r'[&?]t=\d+s?', '', url)
+        url = re.sub(r'[&?]list=[^&]+', '', url)
+        url = re.sub(r'[&?]index=\d+', '', url)
+        url = re.sub(r'[&?]start_radio=\d+', '', url)
+        url = url.rstrip('&?')
+        return url
+
     def _run_ytdlp(self, url: str, args: list) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+        clean_url = self._clean_url(url)
         cmd = [
             "yt-dlp",
             "--cookies-from-browser", "firefox",
@@ -22,9 +31,10 @@ class YouTubeDownloader:
             "--print-json",
             "--no-part",
             "--windows-filenames",
+            "--no-playlist",
             "-o", str(self.download_dir / "%(id)s.%(ext)s"),
             *args,
-            url
+            clean_url
         ]
 
         try:
