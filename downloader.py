@@ -95,10 +95,10 @@ class YouTubeDownloader:
 
     def download_video(self, url: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
         args = [
-            "-f", "bestvideo[height<=1080][fps<=60]+bestaudio/best[height<=1080]/best",
+            "-f", "bestvideo[height<=1080][fps<=60][vcodec^=hvc1]+bestaudio/bestvideo[height<=1080][fps<=60][vcodec^=hev1]+bestaudio/bestvideo[height<=1080][fps<=60][vcodec^=avc1]+bestaudio/best[height<=1080]/best",
             "--merge-output-format", "mp4",
-            "--embed-thumbnail",
             "--add-metadata",
+            "--ppa", "ffmpeg:-movflags +faststart",
         ]
 
         return self._run_ytdlp(url, args)
