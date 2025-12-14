@@ -1,0 +1,6 @@
+discord.py>=2.6.4
+yt-dlp>=2025.12.8
+flask>=3.1.2
+python-dotenv>=1.2.1
+APScheduler>=3.11.1
+aiohttp>=3.13.2
