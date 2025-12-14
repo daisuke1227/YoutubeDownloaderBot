@@ -114,3 +114,14 @@ class FileManager:
             "total_size_mb": round(total_size / (1024 * 1024), 2),
             "expiry_hours": self.expiry_hours
         }
+
+    def clear_all_files(self):
+        count = 0
+        for file in self.upload_dir.iterdir():
+            if file.suffix.lower() in ['.mp4', '.mp3', '.webm']:
+                file.unlink()
+                count += 1
+        self.metadata.clear()
+        self._save_metadata()
+        if count > 0:
+            print(f" Cleaned up {count} file(s) on startup")

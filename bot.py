@@ -71,6 +71,7 @@ class YouTubeBot(commands.Bot):
         self.file_server = FileServer(UPLOAD_DIR, FILE_SERVER_PORT, FILE_SERVER_DOMAIN)
 
     async def setup_hook(self):
+        self.file_manager.clear_all_files()
         self.file_server.start(threaded=True)
         self.file_manager.start_scheduler()
         await self.tree.sync()
