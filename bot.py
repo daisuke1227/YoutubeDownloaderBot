@@ -93,7 +93,7 @@ def build_info_text(title: str, uploader: str, views: int, duration: int,
     return text
 
 
-async def process_download(interaction: discord.Interaction, url: str, is_audio: bool):
+async def process_download(interaction: discord.Interaction, url: str, is_audio: bool, hidden: bool = False):
     await interaction.response.defer(ephemeral=True)
 
     try:
@@ -166,7 +166,14 @@ async def process_download(interaction: discord.Interaction, url: str, is_audio:
                     accent_colour=discord.Colour.red()
                 )
 
-        await interaction.channel.send(view=LayoutView())
+        if hidden:
+            await interaction.followup.send(view=LayoutView(), ephemeral=True)
+        else:
+            try:
+                await interaction.channel.send(view=LayoutView())
+            except discord.Forbidden:
+                await interaction.followup.send(view=LayoutView(), ephemeral=False)
+
         media_type = "audio" if is_audio else "video"
         print(f" Downloaded {media_type}: {metadata.get('title', 'Unknown')} -> {file_uuid}")
 
@@ -178,19 +185,19 @@ async def process_download(interaction: discord.Interaction, url: str, is_audio:
 
 
 @bot.tree.command(name="video", description="Download a YouTube video in 1080p quality")
-@app_commands.describe(url="The YouTube video URL to download")
+@app_commands.describe(url="The YouTube video URL to download", hidden="Only you can see the result")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.allowed_installs(guilds=True, users=True)
-async def download_video(interaction: discord.Interaction, url: str):
-    await process_download(interaction, url, is_audio=False)
+async def download_video(interaction: discord.Interaction, url: str, hidden: bool = False):
+    await process_download(interaction, url, is_audio=False, hidden=hidden)
 
 
 @bot.tree.command(name="audio", description="Download a YouTube video as 320kbps MP3")
-@app_commands.describe(url="The YouTube video URL to extract audio from")
+@app_commands.describe(url="The YouTube video URL to extract audio from", hidden="Only you can see the result")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.allowed_installs(guilds=True, users=True)
-async def download_audio(interaction: discord.Interaction, url: str):
-    await process_download(interaction, url, is_audio=True)
+async def download_audio(interaction: discord.Interaction, url: str, hidden: bool = False):
+    await process_download(interaction, url, is_audio=True, hidden=hidden)
 
 
 @bot.tree.command(name="stats", description="Show bot statistics and file storage info")
