@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 
 VIDEO_FORMAT = (
-    "bestvideo[height<=1080][fps<=60][vcodec^=hvc1]+bestaudio/"
-    "bestvideo[height<=1080][fps<=60][vcodec^=hev1]+bestaudio/"
+    "bestvideo[height<=1080][fps<=60][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestaudio/"
     "bestvideo[height<=1080][fps<=60][vcodec^=avc1]+bestaudio/"
+    "bestvideo[height<=1080][fps<=60]+bestaudio/"
     "best[height<=1080]/best"
 )
 

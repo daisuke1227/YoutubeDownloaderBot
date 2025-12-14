@@ -169,9 +169,22 @@ async def process_download(interaction: discord.Interaction, url: str, is_audio:
         if hidden:
             await interaction.followup.send(view=LayoutView(), ephemeral=True)
         else:
+            can_send = False
             try:
-                await interaction.channel.send(view=LayoutView())
-            except discord.Forbidden:
+                if hasattr(interaction.channel, 'permissions_for') and interaction.guild:
+                    bot_perms = interaction.channel.permissions_for(interaction.guild.me)
+                    can_send = bot_perms.send_messages
+                elif isinstance(interaction.channel, discord.DMChannel):
+                    can_send = True
+            except:
+                pass
+            
+            if can_send:
+                try:
+                    await interaction.channel.send(view=LayoutView())
+                except:
+                    await interaction.followup.send(view=LayoutView(), ephemeral=False)
+            else:
                 await interaction.followup.send(view=LayoutView(), ephemeral=False)
 
         media_type = "audio" if is_audio else "video"
