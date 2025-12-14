@@ -1,4 +1,24 @@
-# I love Discord bots >~<
+<div align="center">
+
+<img src="https://file.285743.online/u/LieOv3.png" alt="Youtube Downloader >~<" width="150">
+
+# Youtube Downloader >~<
+
+---
+
+### Get the Bot
+
+**Add as a User App** - can use anywhere and even in dms >:3
+
+[![Add App](https://img.shields.io/badge/Add%20as%20App-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=1449581729018019850)
+
+**Invite to Your Server** - pretty self explanatory >~<
+
+[![Invite Bot](https://img.shields.io/badge/Invite%20to%20Server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=1449581729018019850&permissions=277025441792&integration_type=0&scope=bot)
+
+---
+
+</div>
 
 ## How to install/run this
 
