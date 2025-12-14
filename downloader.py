@@ -64,7 +64,7 @@ class YouTubeDownloader:
             "-f", VIDEO_FORMAT,
             "--merge-output-format", "mp4",
             "--add-metadata",
-            "--ppa", "ffmpeg:-movflags +faststart",
+            "--ppa", "ffmpeg:-c copy -fflags +genpts -movflags +faststart",
         ]
         return self._run_ytdlp(url, args)
 

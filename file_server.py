@@ -40,15 +40,25 @@ class FileServer:
             file_size = file.stat().st_size
             range_header = request.headers.get('Range')
 
-            if range_header:
-                return self._serve_range(file, file_size, mimetype, range_header)
-
-            response = send_from_directory(self.upload_dir, file.name, mimetype=mimetype, as_attachment=False)
-            response.headers.update({
+            headers = {
                 'Accept-Ranges': 'bytes',
+                'Content-Length': file_size,
                 'X-Content-Type-Options': 'nosniff',
-                'Content-Disposition': f'inline; filename="{file.name}"'
-            })
+                'Content-Disposition': f'inline; filename="{file.name}"',
+                'Cache-Control': 'public, max-age=3600',
+                'ETag': f'"{file.stat().st_mtime}-{file_size}"',
+            }
+
+            if range_header:
+                return self._serve_range(file, file_size, mimetype, range_header, headers)
+
+            def generate():
+                with open(file, 'rb') as f:
+                    while chunk := f.read(65536):
+                        yield chunk
+
+            response = Response(generate(), mimetype=mimetype)
+            response.headers.update(headers)
             return response
 
         @self.app.route('/download/<path:file_id>')
@@ -66,7 +76,7 @@ class FileServer:
         def not_found(e):
             return {"error": "File not found or expired"}, 404
 
-    def _serve_range(self, file: Path, file_size: int, mimetype: str, range_header: str) -> Response:
+    def _serve_range(self, file: Path, file_size: int, mimetype: str, range_header: str, base_headers: dict) -> Response:
         byte_range = range_header.replace('bytes=', '').split('-')
         start = int(byte_range[0]) if byte_range[0] else 0
         end = int(byte_range[1]) if byte_range[1] else file_size - 1
@@ -77,17 +87,23 @@ class FileServer:
         end = min(end, file_size - 1)
         length = end - start + 1
 
-        with open(file, 'rb') as f:
-            f.seek(start)
-            data = f.read(length)
+        def generate():
+            with open(file, 'rb') as f:
+                f.seek(start)
+                remaining = length
+                while remaining > 0:
+                    chunk_size = min(65536, remaining)
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
+                    yield chunk
 
-        response = Response(data, status=206, mimetype=mimetype)
+        response = Response(generate(), status=206, mimetype=mimetype)
+        response.headers.update(base_headers)
         response.headers.update({
             'Content-Range': f'bytes {start}-{end}/{file_size}',
             'Content-Length': length,
-            'Accept-Ranges': 'bytes',
-            'X-Content-Type-Options': 'nosniff',
-            'Content-Disposition': f'inline; filename="{file.name}"'
         })
         return response
 
