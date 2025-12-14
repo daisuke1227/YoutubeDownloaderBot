@@ -179,6 +179,8 @@ async def download_video(interaction: discord.Interaction, url: str):
         
         file_size_bytes = file_info.get('size_bytes') if file_info else None
         
+        video_url = f"https://youtube.com/watch?v={video_id}"
+        
         info_text = f"**{title}**\n"
         info_text += f"📺 {uploader}\n"
         info_text += f"👁️ {format_number(views)} views • ⏱️ {format_duration(duration_secs)}\n"
@@ -192,6 +194,7 @@ async def download_video(interaction: discord.Interaction, url: str):
                     discord.MediaGalleryItem(media=file_url)
                 ),
                 ui.ActionRow(
+                    ui.Button(label="YouTube", url=video_url, style=discord.ButtonStyle.link),
                     ui.Button(label="Stream", url=file_url, style=discord.ButtonStyle.link),
                     ui.Button(label="Download", url=download_url, style=discord.ButtonStyle.link)
                 ),
@@ -199,7 +202,7 @@ async def download_video(interaction: discord.Interaction, url: str):
             )
         
         layout_view = VideoLayoutView()
-        await interaction.followup.send(view=layout_view, ephemeral=False)
+        await interaction.channel.send(view=layout_view)
 
         print(f" Downloaded video: {metadata.get('title', 'Unknown')} -> {file_uuid}")
 
@@ -258,17 +261,63 @@ async def download_audio(interaction: discord.Interaction, url: str):
         file_url = bot.file_server.get_file_url(file_uuid, download=False, extension=".mp3")
         download_url = bot.file_server.get_file_url(file_uuid, download=True, extension=".mp3")
 
-        embed = create_audio_embed(
-            metadata,
-            file_url,
-            download_url,
-            file_size=file_info.get('size_bytes') if file_info else None,
-            expires_in_hours=FILE_EXPIRY_HOURS
-        )
-
-        view = create_download_button(file_url, download_url, is_audio=True)
-
-        await interaction.followup.send(embed=embed, view=view, ephemeral=False)
+        title = metadata.get('title', 'Audio')
+        uploader = metadata.get('uploader', 'Unknown')
+        views = metadata.get('view_count', 0)
+        likes = metadata.get('like_count', 0)
+        dislikes = fetch_youtube_dislikes(video_id)
+        duration_secs = metadata.get('duration', 0)
+        
+        def format_duration(secs):
+            if not secs:
+                return "Unknown"
+            mins, s = divmod(int(secs), 60)
+            hrs, mins = divmod(mins, 60)
+            if hrs > 0:
+                return f"{hrs}:{mins:02d}:{s:02d}"
+            return f"{mins}:{s:02d}"
+        
+        def format_number(n):
+            if not n:
+                return "0"
+            if n >= 1_000_000:
+                return f"{n/1_000_000:.1f}M"
+            if n >= 1_000:
+                return f"{n/1_000:.1f}K"
+            return str(n)
+        
+        def format_size(bytes_size):
+            if not bytes_size:
+                return "Unknown"
+            if bytes_size >= 1024 * 1024 * 1024:
+                return f"{bytes_size / (1024 * 1024 * 1024):.2f} GB"
+            if bytes_size >= 1024 * 1024:
+                return f"{bytes_size / (1024 * 1024):.2f} MB"
+            return f"{bytes_size / 1024:.2f} KB"
+        
+        file_size_bytes = file_info.get('size_bytes') if file_info else None
+        
+        video_url = f"https://youtube.com/watch?v={video_id}"
+        
+        info_text = f"**{title}**\n"
+        info_text += f"🎵 {uploader}\n"
+        info_text += f"👁️ {format_number(views)} views • ⏱️ {format_duration(duration_secs)}\n"
+        info_text += f"👍 {format_number(likes)} • 👎 {format_number(dislikes)}\n"
+        info_text += f"📁 {format_size(file_size_bytes)} • 🎧 320kbps MP3 • ⏳ Expires in {FILE_EXPIRY_HOURS}h"
+        
+        class AudioLayoutView(ui.LayoutView):
+            container = ui.Container(
+                ui.TextDisplay(info_text),
+                ui.ActionRow(
+                    ui.Button(label="YouTube", url=video_url, style=discord.ButtonStyle.link),
+                    ui.Button(label="Stream", url=file_url, style=discord.ButtonStyle.link),
+                    ui.Button(label="Download", url=download_url, style=discord.ButtonStyle.link)
+                ),
+                accent_colour=discord.Colour.green()
+            )
+        
+        layout_view = AudioLayoutView()
+        await interaction.channel.send(view=layout_view)
 
         print(f" Downloaded audio: {metadata.get('title', 'Unknown')} -> {file_uuid}")
 
