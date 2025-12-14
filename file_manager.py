@@ -1,4 +1,3 @@
-import os
 import json
 import shutil
 import uuid
@@ -15,14 +14,8 @@ class FileManager:
         self.expiry_hours = expiry_hours
         self.metadata_file = self.upload_dir / ".metadata.json"
         self.metadata: Dict[str, Dict[str, Any]] = self._load_metadata()
-
         self.scheduler = BackgroundScheduler()
-        self.scheduler.add_job(
-            self.cleanup_expired_files,
-            'interval',
-            hours=1,
-            id='cleanup_job'
-        )
+        self.scheduler.add_job(self.cleanup_expired_files, 'interval', hours=1, id='cleanup_job')
 
     def start_scheduler(self):
         if not self.scheduler.running:
@@ -39,7 +32,7 @@ class FileManager:
                 with open(self.metadata_file, 'r') as f:
                     return json.load(f)
             except Exception:
-                return {}
+                pass
         return {}
 
     def _save_metadata(self):
@@ -52,24 +45,23 @@ class FileManager:
             return None
 
         file_uuid = str(uuid.uuid4())
-        extension = source_path.suffix
-        new_filename = f"{file_uuid}{extension}"
+        new_filename = f"{file_uuid}{source_path.suffix}"
         dest_path = self.upload_dir / new_filename
 
         shutil.move(str(source_path), str(dest_path))
 
+        now = datetime.now()
         self.metadata[file_uuid] = {
             "original_filename": original_filename,
             "video_title": video_title,
             "video_id": video_id,
-            "extension": extension,
+            "extension": source_path.suffix,
             "filename": new_filename,
-            "created_at": datetime.now().isoformat(),
-            "expires_at": (datetime.now() + timedelta(hours=self.expiry_hours)).isoformat(),
+            "created_at": now.isoformat(),
+            "expires_at": (now + timedelta(hours=self.expiry_hours)).isoformat(),
             "size_bytes": dest_path.stat().st_size
         }
         self._save_metadata()
-
         return file_uuid
 
     def get_file_info(self, file_uuid: str) -> Optional[Dict[str, Any]]:
@@ -98,19 +90,17 @@ class FileManager:
 
     def cleanup_expired_files(self):
         now = datetime.now()
-        expired = []
-
-        for file_uuid, info in self.metadata.items():
-            expires_at = datetime.fromisoformat(info["expires_at"])
-            if now > expires_at:
-                expired.append(file_uuid)
+        expired = [
+            uid for uid, info in self.metadata.items()
+            if now > datetime.fromisoformat(info["expires_at"])
+        ]
 
         for file_uuid in expired:
             info = self.metadata[file_uuid]
             file_path = self.upload_dir / info["filename"]
             if file_path.exists():
                 file_path.unlink()
-                print(f" Deleted expired file: {info['video_title']} ({file_uuid})")
+                print(f" Deleted expired: {info['video_title']} ({file_uuid})")
             del self.metadata[file_uuid]
 
         if expired:
