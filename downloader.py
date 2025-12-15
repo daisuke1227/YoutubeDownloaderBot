@@ -33,6 +33,7 @@ class YouTubeDownloader:
             "--no-part",
             "--windows-filenames",
             "--no-playlist",
+            "-N", "1000",
             "-o", str(self.download_dir / "%(id)s.%(ext)s"),
             *args,
             self._clean_url(url)
