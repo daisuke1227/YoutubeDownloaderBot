@@ -33,6 +33,9 @@ class YouTubeDownloader:
             "--no-part",
             "--windows-filenames",
             "--no-playlist",
+            "--no-check-certificates",
+            "--sleep-requests", "0",
+            "--extractor-args", "youtube:player_client=tv_embedded",
             "-N", "1000",
             "-o", str(self.download_dir / "%(id)s.%(ext)s"),
             *args,
@@ -97,11 +100,14 @@ class YouTubeDownloader:
             "--no-playlist",
             "--newline",
             "--progress",
+            "--no-check-certificates",
+            "--sleep-requests", "0",
+            "--extractor-args", "youtube:player_client=tv_embedded",
             "-N", "1000",
             "-o", str(self.download_dir / "%(id)s.%(ext)s"),
             *args,
             self._clean_url(url)
-        ]
+        ]   
 
         try:
             process = subprocess.Popen(
