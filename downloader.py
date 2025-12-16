@@ -69,6 +69,93 @@ class YouTubeDownloader:
         ]
         return self._run_ytdlp(url, args)
 
+    def download_with_progress(self, url: str, is_audio: bool = False):
+        if is_audio:
+            args = [
+                "-f", "bestaudio/best",
+                "-x",
+                "--audio-format", "mp3",
+                "--audio-quality", "320K",
+                "--embed-thumbnail",
+                "--add-metadata",
+            ]
+        else:
+            args = [
+                "-f", VIDEO_FORMAT,
+                "--merge-output-format", "mp4",
+                "--add-metadata",
+                "--ppa", "ffmpeg:-c copy -fflags +genpts -movflags +faststart",
+            ]
+
+        cmd = [
+            "yt-dlp",
+            "--cookies-from-browser", "firefox",
+            "--no-warnings",
+            "--print-json",
+            "--no-part",
+            "--windows-filenames",
+            "--no-playlist",
+            "--newline",
+            "--progress",
+            "-N", "1000",
+            "-o", str(self.download_dir / "%(id)s.%(ext)s"),
+            *args,
+            self._clean_url(url)
+        ]
+
+        try:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+
+            metadata = None
+            last_percent = -1
+
+            for line in process.stdout:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                print(f"[yt-dlp] {line}")
+
+                if line.startswith('{'):
+                    try:
+                        metadata = json.loads(line)
+                    except json.JSONDecodeError:
+                        pass
+                elif '[download]' in line:
+                    match = re.search(r'(\d+\.?\d*)%', line)
+                    if match:
+                        try:
+                            percent = float(match.group(1))
+                            speed_match = re.search(r'at\s+(\S+)', line)
+                            eta_match = re.search(r'ETA\s+(\S+)', line)
+                            speed = speed_match.group(1) if speed_match else "..."
+                            eta = eta_match.group(1) if eta_match else "..."
+                            
+                            if int(percent) > last_percent:
+                                last_percent = int(percent)
+                                yield ('progress', percent, speed, eta)
+                        except (ValueError, IndexError):
+                            pass
+
+            process.wait()
+
+            if process.returncode != 0:
+                yield ('error', "Download failed", None)
+                return
+
+            yield ('done', metadata)
+
+        except FileNotFoundError:
+            yield ('error', "yt-dlp not found", None)
+        except Exception as e:
+            yield ('error', str(e), None)
+
     def download_audio(self, url: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
         args = [
             "-f", "bestaudio/best",

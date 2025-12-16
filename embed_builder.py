@@ -135,3 +135,30 @@ def create_processing_embed(url: str, is_audio: bool = False) -> discord.Embed:
     embed.add_field(name="URL", value=url, inline=False)
     embed.set_footer(text="YouTube Downloader Bot • Please wait")
     return embed
+
+
+def create_progress_embed(percent: float, speed: str, eta: str, is_audio: bool = False) -> discord.Embed:
+    filled = int(percent / 5)
+    bar = "█" * filled + "░" * (20 - filled)
+    action = "🎵 Extracting audio" if is_audio else "📺 Downloading video"
+    
+    embed = discord.Embed(
+        title=action,
+        description=f"```\n[{bar}] {percent:.1f}%\n```",
+        color=0x00FF00 if percent >= 100 else 0xFFAA00,
+    )
+    embed.add_field(name="⚡ Speed", value=speed or "...", inline=True)
+    embed.add_field(name="⏱️ ETA", value=eta or "...", inline=True)
+    embed.set_footer(text="YouTube Downloader Bot")
+    return embed
+
+
+def create_success_embed(is_audio: bool = False) -> discord.Embed:
+    action = "🎵 Audio extracted!" if is_audio else "📺 Video downloaded!"
+    embed = discord.Embed(
+        title=action,
+        description="Processing complete. Here's your file:",
+        color=0x00FF00,
+    )
+    embed.set_footer(text="YouTube Downloader Bot")
+    return embed

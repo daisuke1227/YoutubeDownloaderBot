@@ -93,20 +93,52 @@ def build_info_text(title: str, uploader: str, views: int, duration: int,
     text += f"📁 {format_size(size_bytes)}{extra} • ⏳ Expires in {FILE_EXPIRY_HOURS}h"
     return text
 
-
 async def process_download(interaction: discord.Interaction, url: str, is_audio: bool, hidden: bool = False):
+    from embed_builder import create_progress_embed, create_success_embed
     await interaction.response.defer(ephemeral=True)
 
     try:
-        await interaction.followup.send(embed=create_processing_embed(url, is_audio), ephemeral=True)
+        progress_msg = await interaction.followup.send(embed=create_progress_embed(0, "...", "...", is_audio), ephemeral=True, wait=True)
+
+        metadata = None
+        error_msg = None
+        last_update = -10
+        update_queue = asyncio.Queue()
+
+        def run_download():
+            for update in bot.downloader.download_with_progress(url, is_audio):
+                asyncio.run_coroutine_threadsafe(update_queue.put(update), loop)
+            asyncio.run_coroutine_threadsafe(update_queue.put(None), loop)
 
         loop = asyncio.get_event_loop()
-        download_fn = bot.downloader.download_audio if is_audio else bot.downloader.download_video
-        success, error, metadata = await loop.run_in_executor(None, download_fn, url)
+        loop.run_in_executor(None, run_download)
 
-        if not success:
-            await interaction.followup.send(embed=create_error_embed(error, url), ephemeral=True)
+        while True:
+            update = await update_queue.get()
+            if update is None:
+                break
+            if update[0] == 'progress':
+                _, percent, speed, eta = update
+                if percent - last_update >= 5 or percent >= 100:
+                    last_update = percent
+                    try:
+                        await progress_msg.edit(embed=create_progress_embed(percent, speed, eta, is_audio))
+                    except:
+                        pass
+            elif update[0] == 'done':
+                metadata = update[1]
+            elif update[0] == 'error':
+                error_msg = update[1]
+
+        if error_msg:
+            await progress_msg.edit(embed=create_error_embed(error_msg, url))
             return
+
+        if not metadata:
+            await progress_msg.edit(embed=create_error_embed("Download failed - no metadata", url))
+            return
+
+        await progress_msg.edit(embed=create_success_embed(is_audio))
 
         video_id = metadata.get('id', '')
         file_path = bot.downloader.get_downloaded_file_path(video_id, is_audio=is_audio)
