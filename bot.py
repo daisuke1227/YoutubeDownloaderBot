@@ -88,9 +88,11 @@ def build_info_text(title: str, uploader: str, views: int, duration: int,
                     likes: int, dislikes: int, size_bytes: int, icon: str, extra: str = "") -> str:
     text = f"**{title}**\n"
     text += f"{icon} {uploader}\n"
-    text += f"👁️ {format_views(views)} views • ⏱️ {format_duration(duration)}\n"
+    text += f"👁️ {format_views(views)} • ⏱️ {format_duration(duration)}\n"
     text += f"👍 {format_views(likes)} • 👎 {format_views(dislikes)}\n"
     text += f"📁 {format_size(size_bytes)}{extra} • ⏳ Expires in {FILE_EXPIRY_HOURS}h"
+    if size_bytes > 250 * 1024 * 1024:
+        text += f"\n\nvideo too large for discord preview, click **Stream** to watch >:("
     return text
 
 async def process_download(interaction: discord.Interaction, url: str, is_audio: bool, hidden: bool = False):

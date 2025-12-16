@@ -42,11 +42,14 @@ def create_video_embed(
     file_size: Optional[int] = None,
     expires_in_hours: int = 24
 ) -> discord.Embed:
+    is_large = file_size and file_size > 250 * 1024 * 1024
+    
     embed = discord.Embed(
         title=f" {metadata.get('title', 'Unknown')}",
         url=file_url,
         color=0xFF0000,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
+        description="video too large for discord preview, click **Stream** to watch >:(" if is_large else None
     )
 
     embed.add_field(name=" Channel", value=metadata.get('uploader', 'Unknown'), inline=True)
@@ -60,7 +63,10 @@ def create_video_embed(
     embed.add_field(name="⏰ Expires", value=f"In {expires_in_hours} hours", inline=True)
 
     if thumbnail := metadata.get('thumbnail'):
-        embed.set_thumbnail(url=thumbnail)
+        if is_large:
+            embed.set_image(url=thumbnail)
+        else:
+            embed.set_thumbnail(url=thumbnail)
 
     embed.set_footer(text="YouTube Downloader Bot • Click title to play", icon_url=YOUTUBE_ICON)
     return embed

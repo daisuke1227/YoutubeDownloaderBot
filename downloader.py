@@ -2,6 +2,7 @@ import subprocess
 import json
 import re
 import shutil
+import time
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 
@@ -117,7 +118,7 @@ class YouTubeDownloader:
             "-o", str(self.download_dir / "%(id)s.%(ext)s"),
             *args,
             self._clean_url(url)
-        ]   
+        ]
 
         try:
             process = subprocess.Popen(
@@ -130,6 +131,7 @@ class YouTubeDownloader:
 
             metadata = None
             last_percent = -1
+            last_update = 0
 
             for line in process.stdout:
                 line = line.strip()
@@ -162,8 +164,10 @@ class YouTubeDownloader:
                             if 'Unknown' in speed or 'Unknown' in eta:
                                 continue
                             
-                            if int(percent) > last_percent:
+                            now = time.time()
+                            if (int(percent) >= last_percent + 5 or int(percent) == 100) and (now - last_update >= 1.0 or int(percent) == 100):
                                 last_percent = int(percent)
+                                last_update = now
                                 yield ('progress', percent, speed, eta)
                         except (ValueError, IndexError):
                             pass
