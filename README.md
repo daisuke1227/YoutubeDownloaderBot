@@ -47,6 +47,11 @@ curl -fsSL https://deno.land/install.sh | sh
 sudo apt install ffmpeg
 ```
 
+5. Install aria2c
+```console
+sudo apt install aria2
+```
+
 ### Windows
 
 1. Install [Firefox](https://www.firefox.com/en-US/browsers/desktop/windows/)
@@ -59,6 +64,11 @@ irm https://deno.land/install.ps1 | iex
 ```
 
 5. Install [FFmpeg](https://windowsloop.com/install-ffmpeg-windows-10/)
+
+6. Install aria2c
+```powershell
+winget install aria2.aria2
+```
 
 ### MacOS 
 
@@ -83,6 +93,12 @@ brew install ffmpeg
 ```console
 curl -fsSL https://deno.land/install.sh | sh
 ```
+
+5. Install aria2c
+```console
+brew install aria2
+```
+
 ### MacOS (Brew)
 
 1. Install Brew
@@ -105,6 +121,11 @@ brew install python
 4. Install FFmpeg
 ```console
 brew install ffmpeg
+```
+
+5. Install aria2c (optional, for faster downloads)
+```console
+brew install aria2
 ```
 
 ## Running and installing The discord bot

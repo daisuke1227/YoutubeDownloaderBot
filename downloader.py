@@ -1,21 +1,27 @@
 import subprocess
 import json
 import re
+import shutil
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 
 VIDEO_FORMAT = (
-    "bestvideo[height<=1080][fps<=60][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestaudio/"
-    "bestvideo[height<=1080][fps<=60][vcodec^=avc1]+bestaudio/"
-    "bestvideo[height<=1080][fps<=60]+bestaudio/"
-    "best[height<=1080]/best"
+    "299+140/137+140/"
+    "bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
+    "bestvideo[height<=1080][vcodec^=avc1]+bestaudio/"
+    "bestvideo[height<=1080]+bestaudio/best"
 )
+
+
+def _has_aria2c() -> bool:
+    return shutil.which("aria2c") is not None
 
 
 class YouTubeDownloader:
     def __init__(self, download_dir: str = "./downloads"):
         self.download_dir = Path(download_dir)
         self.download_dir.mkdir(parents=True, exist_ok=True)
+        self._use_aria2c = _has_aria2c()
 
     def _clean_url(self, url: str) -> str:
         url = re.sub(r'[&?]t=\d+s?', '', url)
@@ -35,8 +41,8 @@ class YouTubeDownloader:
             "--no-playlist",
             "--no-check-certificates",
             "--sleep-requests", "0",
-            "--extractor-args", "youtube:player_client=tv_embedded",
-            "-N", "1000",
+            "--extractor-args", "youtube:player_client=tv_embedded,web",
+            "-N", "10000",
             "-o", str(self.download_dir / "%(id)s.%(ext)s"),
             *args,
             self._clean_url(url)
@@ -70,6 +76,8 @@ class YouTubeDownloader:
             "--add-metadata",
             "--ppa", "ffmpeg:-c copy -fflags +genpts -movflags +faststart",
         ]
+        if self._use_aria2c:
+            args.extend(["--downloader", "aria2c@137", "--downloader-args", "aria2c:-x 16 -s 16 -k 1M@137"])
         return self._run_ytdlp(url, args)
 
     def download_with_progress(self, url: str, is_audio: bool = False):
@@ -89,6 +97,8 @@ class YouTubeDownloader:
                 "--add-metadata",
                 "--ppa", "ffmpeg:-c copy -fflags +genpts -movflags +faststart",
             ]
+            if self._use_aria2c:
+                args.extend(["--downloader", "aria2c@137", "--downloader-args", "aria2c:-x 16 -s 16 -k 1M@137"])
 
         cmd = [
             "yt-dlp",
@@ -102,7 +112,7 @@ class YouTubeDownloader:
             "--progress",
             "--no-check-certificates",
             "--sleep-requests", "0",
-            "--extractor-args", "youtube:player_client=tv_embedded",
+            "--extractor-args", "youtube:player_client=tv_embedded,web",
             "-N", "1000",
             "-o", str(self.download_dir / "%(id)s.%(ext)s"),
             *args,
@@ -126,6 +136,12 @@ class YouTubeDownloader:
                 if not line:
                     continue
                 
+                if 'Unknown' in line:
+                    continue
+
+                if '[download]' in line and ('B/s' not in line and 'MiB' not in line and '%' not in line):
+                    continue
+                
                 print(f"[yt-dlp] {line}")
 
                 if line.startswith('{'):
@@ -142,6 +158,9 @@ class YouTubeDownloader:
                             eta_match = re.search(r'ETA\s+(\S+)', line)
                             speed = speed_match.group(1) if speed_match else "..."
                             eta = eta_match.group(1) if eta_match else "..."
+                            
+                            if 'Unknown' in speed or 'Unknown' in eta:
+                                continue
                             
                             if int(percent) > last_percent:
                                 last_percent = int(percent)
