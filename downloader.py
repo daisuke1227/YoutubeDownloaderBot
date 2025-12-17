@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 
 VIDEO_FORMAT = (
-    "299+140/137+140/"
     "bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
     "bestvideo[height<=1080][vcodec^=avc1]+bestaudio/"
     "bestvideo[height<=1080]+bestaudio/best"
@@ -35,6 +34,7 @@ class YouTubeDownloader:
         cmd = [
             "yt-dlp",
             "--cookies-from-browser", "firefox",
+            "--remote-components", "ejs:github",
             "--no-warnings",
             "--print-json",
             "--no-part",
@@ -78,7 +78,7 @@ class YouTubeDownloader:
             "--ppa", "ffmpeg:-c copy -fflags +genpts -movflags +faststart",
         ]
         if self._use_aria2c:
-            args.extend(["--downloader", "aria2c@137", "--downloader-args", "aria2c:-x 16 -s 16 -k 1M@137"])
+            args.extend(["--downloader", "aria2c", "--downloader-args", "aria2c:-x 16 -s 16 -k 1M"])
         return self._run_ytdlp(url, args)
 
     def download_with_progress(self, url: str, is_audio: bool = False):
@@ -98,12 +98,11 @@ class YouTubeDownloader:
                 "--add-metadata",
                 "--ppa", "ffmpeg:-c copy -fflags +genpts -movflags +faststart",
             ]
-            if self._use_aria2c:
-                args.extend(["--downloader", "aria2c@137", "--downloader-args", "aria2c:-x 16 -s 16 -k 1M@137"])
 
         cmd = [
             "yt-dlp",
             "--cookies-from-browser", "firefox",
+            "--remote-components", "ejs:github",
             "--no-warnings",
             "--print-json",
             "--no-part",
@@ -114,6 +113,7 @@ class YouTubeDownloader:
             "--no-check-certificates",
             "--sleep-requests", "0",
             "--extractor-args", "youtube:player_client=tv_embedded,web",
+            "--progress-template", "download:[PROGRESS] %(progress._percent_str)s %(progress._speed_str)s ETA %(progress._eta_str)s",
             "-N", "1000",
             "-o", str(self.download_dir / "%(id)s.%(ext)s"),
             *args,
@@ -138,10 +138,10 @@ class YouTubeDownloader:
                 if not line:
                     continue
                 
-                if 'Unknown' in line:
+                if 'Unknown' in line or 'N/A' in line:
                     continue
 
-                if '[download]' in line and ('B/s' not in line and 'MiB' not in line and '%' not in line):
+                if '[download]' in line and '[PROGRESS]' not in line and '%' not in line:
                     continue
                 
                 print(f"[yt-dlp] {line}")
@@ -151,7 +151,25 @@ class YouTubeDownloader:
                         metadata = json.loads(line)
                     except json.JSONDecodeError:
                         pass
-                elif '[download]' in line:
+                elif '[PROGRESS]' in line:
+                    match = re.search(r'\[PROGRESS\]\s+(\d+\.?\d*)%\s+(\S+)\s+ETA\s+(\S+)', line)
+                    if match:
+                        try:
+                            percent = float(match.group(1))
+                            speed = match.group(2)
+                            eta = match.group(3)
+                            
+                            if 'Unknown' in speed or 'Unknown' in eta or 'N/A' in speed or 'N/A' in eta:
+                                continue
+                            
+                            now = time.time()
+                            if (int(percent) >= last_percent + 5 or int(percent) >= 99) and (now - last_update >= 1.0 or int(percent) >= 99):
+                                last_percent = int(percent)
+                                last_update = now
+                                yield ('progress', percent, speed, eta)
+                        except (ValueError, IndexError):
+                            pass
+                elif '[download]' in line and '%' in line:
                     match = re.search(r'(\d+\.?\d*)%', line)
                     if match:
                         try:
@@ -165,7 +183,7 @@ class YouTubeDownloader:
                                 continue
                             
                             now = time.time()
-                            if (int(percent) >= last_percent + 5 or int(percent) == 100) and (now - last_update >= 1.0 or int(percent) == 100):
+                            if (int(percent) >= last_percent + 5 or int(percent) >= 99) and (now - last_update >= 1.0 or int(percent) >= 99):
                                 last_percent = int(percent)
                                 last_update = now
                                 yield ('progress', percent, speed, eta)
